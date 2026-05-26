@@ -1,0 +1,923 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Galley</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:        #0f0f0d;
+      --surface:   #191917;
+      --border:    #2c2c28;
+      --border2:   #3a3a34;
+      --text:      #e2e0d8;
+      --muted:     #7a7870;
+      --faint:     #222220;
+      --accent:    #c8b560;
+      --danger:    #c45c4a;
+      --warn:      #c4894a;
+      --good:      #6a9e72;
+      --font-serif: 'Playfair Display', Georgia, serif;
+      --font-mono:  'IBM Plex Mono', 'Courier New', monospace;
+    }
+
+    html, body { height: 100%; background: var(--bg); color: var(--text); font-family: var(--font-mono); font-size: 14px; line-height: 1.5; }
+
+    /* ── Splash ── */
+    #splash {
+      position: fixed; inset: 0; background: var(--bg);
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      z-index: 1000; gap: 24px;
+      animation: splashOut 0.5s ease 2.2s forwards;
+    }
+    #splash svg { animation: logoReveal 0.9s ease 0.3s both; }
+    #splash-wordmark {
+      font-family: var(--font-serif); font-size: 42px; letter-spacing: -0.02em;
+      color: var(--accent); animation: wordReveal 0.7s ease 0.9s both;
+    }
+    #splash-tagline {
+      font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.2em;
+      text-transform: uppercase; color: var(--muted);
+      animation: wordReveal 0.7s ease 1.3s both;
+    }
+    #splash-line {
+      width: 0; height: 1px; background: var(--accent); opacity: 0.4;
+      animation: lineGrow 0.8s ease 1.7s both;
+    }
+    @keyframes logoReveal  { from { opacity:0; transform:translateY(-10px) scale(0.95); } to { opacity:1; transform:none; } }
+    @keyframes wordReveal  { from { opacity:0; transform:translateY(6px); } to { opacity:1; transform:none; } }
+    @keyframes lineGrow    { from { width:0; opacity:0; } to { width:180px; opacity:0.4; } }
+    @keyframes splashOut   { from { opacity:1; pointer-events:all; } to { opacity:0; pointer-events:none; } }
+
+    /* ── App ── */
+    #app { max-width: 700px; margin: 0 auto; padding: 0 20px 60px; opacity: 0; animation: appIn 0.4s ease 2.4s forwards; }
+    @keyframes appIn { to { opacity: 1; } }
+
+    /* ── Header ── */
+    header {
+      padding: 28px 0 20px; border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: space-between; margin-bottom: 22px;
+    }
+    .logo-lockup { display: flex; align-items: center; gap: 12px; }
+    .logo-wordmark { font-family: var(--font-serif); font-size: 28px; letter-spacing: -0.02em; color: var(--accent); line-height: 1; }
+    .logo-sub { font-size: 10px; color: var(--muted); letter-spacing: 0.14em; text-transform: uppercase; margin-top: 3px; }
+    .header-right { display: flex; gap: 8px; align-items: center; }
+    #item-count { font-size: 11px; color: var(--muted); }
+
+    /* ── Tabs ── */
+    .tabs { display: flex; gap: 2px; margin-bottom: 22px; border-bottom: 1px solid var(--border); }
+    .tab-btn {
+      background: none; border: none; border-bottom: 2px solid transparent;
+      padding: 10px 18px; color: var(--muted); font-family: var(--font-mono);
+      font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase;
+      cursor: pointer; margin-bottom: -1px; transition: color 0.15s, border-color 0.15s;
+    }
+    .tab-btn:hover { color: var(--text); }
+    .tab-btn.active { color: var(--accent); border-bottom-color: var(--accent); }
+    .tab-badge {
+      display: inline-block; background: var(--accent); color: var(--bg);
+      border-radius: 10px; padding: 0 6px; font-size: 10px; margin-left: 6px;
+      font-weight: 600; vertical-align: middle;
+    }
+
+    /* ── Buttons ── */
+    .btn {
+      border: none; border-radius: 4px; cursor: pointer; font-family: var(--font-mono);
+      font-weight: 600; letter-spacing: 0.06em; transition: opacity 0.15s, background 0.15s, border-color 0.15s;
+      white-space: nowrap;
+    }
+    .btn:disabled { opacity: 0.38; cursor: not-allowed; }
+    .btn-primary   { background: var(--accent); color: var(--bg); padding: 10px 18px; font-size: 12px; }
+    .btn-secondary { background: var(--faint); color: var(--muted); padding: 8px 14px; font-size: 12px; border: 1px solid var(--border); }
+    .btn-ghost     { background: transparent; color: var(--muted); padding: 6px 10px; font-size: 12px; border: 1px solid var(--border2); }
+    .btn-danger    { background: transparent; color: var(--danger); padding: 5px 9px; font-size: 11px; border: 1px solid #c45c4a44; }
+    .btn-sm        { padding: 5px 10px !important; font-size: 11px !important; }
+    .btn-full      { width: 100%; padding: 13px; font-size: 13px; }
+    .btn-primary:hover:not(:disabled)   { opacity: 0.86; }
+    .btn-secondary:hover:not(:disabled) { background: var(--border); color: var(--text); }
+    .btn-ghost:hover:not(:disabled)     { border-color: var(--accent); color: var(--accent); }
+
+    /* ── Add toolbar ── */
+    .add-toolbar {
+      display: flex; gap: 6px; margin-bottom: 14px; flex-wrap: wrap;
+    }
+
+    /* ── Form ── */
+    .field { margin-bottom: 14px; }
+    label { display: block; font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); margin-bottom: 5px; }
+    input, select, textarea {
+      width: 100%; background: var(--faint); border: 1px solid var(--border); border-radius: 4px;
+      padding: 8px 10px; color: var(--text); font-family: var(--font-mono); font-size: 13px;
+      outline: none; transition: border-color 0.15s;
+    }
+    input:focus, select:focus, textarea:focus { border-color: var(--accent); }
+    input::placeholder, textarea::placeholder { color: var(--muted); }
+    textarea { resize: vertical; min-height: 70px; }
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
+
+    /* ── Modal ── */
+    .modal-overlay {
+      position: fixed; inset: 0; background: rgba(0,0,0,0.82);
+      display: flex; align-items: center; justify-content: center; z-index: 200;
+      animation: fadeIn 0.15s ease;
+    }
+    .modal {
+      background: var(--surface); border: 1px solid var(--border2); border-radius: 10px;
+      padding: 26px; width: 420px; max-width: 94vw; max-height: 90vh; overflow-y: auto;
+      animation: slideUp 0.18s ease;
+    }
+    .modal-title { font-family: var(--font-serif); font-size: 20px; color: var(--accent); margin-bottom: 20px; }
+    .modal-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 22px; }
+
+    @keyframes fadeIn  { from { opacity:0; } to { opacity:1; } }
+    @keyframes slideUp { from { transform:translateY(12px); opacity:0; } to { transform:translateY(0); opacity:1; } }
+
+    /* ── Photo preview ── */
+    .photo-preview {
+      width: 100%; max-height: 180px; object-fit: cover;
+      border-radius: 6px; border: 1px solid var(--border2); margin-bottom: 14px; display: block;
+    }
+    .photo-scanning {
+      background: var(--faint); border: 1px solid var(--border); border-radius: 6px;
+      padding: 16px; text-align: center; font-size: 12px; color: var(--muted);
+      margin-bottom: 14px; display: flex; align-items: center; justify-content: center; gap: 8px;
+    }
+
+    /* ── Ingredient rows ── */
+    .ingredient-list { display: flex; flex-direction: column; gap: 5px; }
+    .ingredient-row {
+      display: flex; align-items: center; gap: 10px; padding: 10px 12px;
+      background: var(--surface); border: 1px solid var(--border); border-left-width: 3px;
+      border-left-color: transparent; border-radius: 6px; cursor: pointer;
+      transition: border-color 0.12s, background 0.12s; user-select: none;
+    }
+    .ingredient-row:hover { border-color: var(--border2); border-left-color: inherit; }
+    .ingredient-row.selected { background: #1e1c0e; border-color: #c8b56044; border-left-color: var(--accent) !important; }
+    .ingredient-row.urgent  { border-left-color: var(--danger) !important; }
+    .ingredient-row.warning { border-left-color: var(--warn) !important; }
+
+    .checkbox {
+      width: 15px; height: 15px; border-radius: 3px; border: 2px solid var(--border2);
+      background: transparent; flex-shrink: 0; transition: all 0.12s; position: relative;
+    }
+    .ingredient-row.selected .checkbox { background: var(--accent); border-color: var(--accent); }
+    .ingredient-row.selected .checkbox::after {
+      content: ''; position: absolute; top: 1px; left: 3px;
+      width: 5px; height: 8px; border: 2px solid var(--bg);
+      border-top: none; border-left: none; transform: rotate(45deg);
+    }
+    .ing-name { font-family: var(--font-serif); font-size: 15px; color: var(--text); flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .ing-meta { font-size: 11px; color: var(--muted); margin-top: 2px; }
+    .expiry-badge { font-size: 10px; font-weight: 600; padding: 3px 7px; border-radius: 3px; flex-shrink: 0; letter-spacing: 0.04em; }
+    .expiry-expired { color: var(--danger); background: #c45c4a1a; }
+    .expiry-urgent  { color: var(--warn);   background: #c4894a1a; }
+    .expiry-soon    { color: #c4b24a;        background: #c4b24a1a; }
+    .expiry-fine    { color: var(--good);    background: #6a9e721a; }
+    .row-actions { display: flex; gap: 4px; flex-shrink: 0; }
+
+    /* ── Empty ── */
+    .empty { text-align: center; padding: 60px 20px; color: var(--muted); }
+    .empty-title { font-family: var(--font-serif); font-size: 22px; color: var(--border2); margin-bottom: 8px; }
+
+    /* ── Filter bar ── */
+    .filter-bar { display: flex; gap: 8px; margin-bottom: 14px; }
+    .filter-bar input { flex: 1; }
+    .filter-bar select { width: auto; min-width: 120px; }
+
+    /* ── Selection banner ── */
+    .sel-banner {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 9px 14px; background: #1e1c0e; border: 1px solid #c8b56033;
+      border-radius: 6px; font-size: 12px; color: var(--accent); margin-bottom: 12px;
+    }
+    .sel-banner-actions { display: flex; gap: 6px; }
+
+    /* ── Recipe ── */
+    .recipe-filters { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 16px; margin-bottom: 14px; }
+    .using-note { font-size: 12px; color: var(--muted); padding: 9px 14px; background: var(--surface); border: 1px solid var(--border); border-radius: 6px; margin-bottom: 14px; }
+    .recipe-card { background: var(--surface); border: 1px solid var(--border2); border-radius: 10px; overflow: hidden; margin-top: 20px; animation: slideUp 0.2s ease; }
+    .recipe-header { padding: 20px 22px; border-bottom: 1px solid var(--border); }
+    .recipe-title { font-family: var(--font-serif); font-size: 26px; color: var(--accent); margin-bottom: 8px; line-height: 1.2; }
+    .recipe-stats { display: flex; gap: 20px; font-size: 11px; color: var(--muted); letter-spacing: 0.06em; text-transform: uppercase; }
+    .recipe-intro { margin-top: 10px; font-size: 13px; color: #aaa; line-height: 1.6; font-style: italic; }
+    .recipe-section { padding: 16px 22px; border-bottom: 1px solid var(--border); }
+    .recipe-section:last-child { border-bottom: none; }
+    .section-label { font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); margin-bottom: 12px; }
+    .ing-line { display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid var(--faint); font-size: 13px; transition: opacity 0.2s, text-decoration 0.2s; }
+    .ing-line:last-child { border-bottom: none; }
+    .ing-line.consumed { opacity: 0.3; text-decoration: line-through; }
+    .ing-line .amount { color: var(--muted); }
+    .step-row { display: flex; gap: 14px; margin-bottom: 14px; font-size: 13px; color: #ccc; line-height: 1.65; }
+    .step-row:last-child { margin-bottom: 0; }
+    .step-num { color: var(--accent); font-weight: 600; flex-shrink: 0; width: 22px; padding-top: 1px; font-size: 12px; }
+    .recipe-notes { font-size: 12px; color: var(--muted); line-height: 1.6; font-style: italic; }
+    .consume-section { padding: 14px 22px; border-top: 1px solid var(--border); }
+    .consumed-confirm { font-size: 12px; color: var(--good); text-align: center; padding: 10px; letter-spacing: 0.06em; }
+
+    /* ── Notices ── */
+    .notice { padding: 10px 14px; border-radius: 6px; font-size: 12px; margin-bottom: 14px; line-height: 1.6; }
+    .notice-error { background: #c45c4a18; color: var(--danger); border: 1px solid #c45c4a33; }
+    .notice-warn  { background: #c4894a18; color: var(--warn);   border: 1px solid #c4894a33; }
+    .notice-info  { background: #c8b56018; color: var(--accent); border: 1px solid #c8b56033; }
+
+    /* ── Settings ── */
+    .settings-section { background: var(--faint); border: 1px solid var(--border); border-radius: 8px; padding: 18px; margin-bottom: 16px; }
+    .settings-title { font-family: var(--font-serif); font-size: 16px; color: var(--accent); margin-bottom: 12px; }
+    .key-display { font-size: 12px; color: var(--muted); background: var(--bg); border: 1px solid var(--border); border-radius: 4px; padding: 8px 10px; margin-bottom: 10px; }
+
+    /* ── Bulk add ── */
+    .bulk-hint { font-size: 11px; color: var(--muted); margin-top: 6px; line-height: 1.5; }
+    .bulk-results { margin-top: 14px; display: flex; flex-direction: column; gap: 6px; }
+    .bulk-result-item {
+      background: var(--faint); border: 1px solid var(--border); border-radius: 5px;
+      padding: 8px 12px; font-size: 12px; display: flex; align-items: center; gap: 8px;
+    }
+    .bulk-result-item .bri-name { font-family: var(--font-serif); font-size: 14px; flex: 1; }
+    .bulk-result-item .bri-meta { color: var(--muted); font-size: 11px; }
+
+    /* ── Spinner ── */
+    .spinner { display: inline-block; width: 13px; height: 13px; border: 2px solid var(--border2); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.7s linear infinite; vertical-align: middle; margin-right: 7px; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    hr { border: none; border-top: 1px solid var(--border); margin: 18px 0; }
+    ::-webkit-scrollbar { width: 5px; }
+    ::-webkit-scrollbar-track { background: var(--bg); }
+    ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
+  </style>
+</head>
+<body>
+
+<!-- ── Splash ── -->
+<div id="splash">
+  <svg width="64" height="64" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <!-- Anchor / helm hybrid mark -->
+    <circle cx="32" cy="32" r="30" stroke="#c8b560" stroke-width="1.5" opacity="0.25"/>
+    <circle cx="32" cy="18" r="4" stroke="#c8b560" stroke-width="2"/>
+    <line x1="32" y1="22" x2="32" y2="52" stroke="#c8b560" stroke-width="2"/>
+    <line x1="16" y1="34" x2="48" y2="34" stroke="#c8b560" stroke-width="2"/>
+    <path d="M22 52 Q32 46 42 52" stroke="#c8b560" stroke-width="2" fill="none" stroke-linecap="round"/>
+    <circle cx="16" cy="34" r="2.5" fill="#c8b560"/>
+    <circle cx="48" cy="34" r="2.5" fill="#c8b560"/>
+    <circle cx="32" cy="52" r="2.5" fill="#c8b560"/>
+  </svg>
+  <div id="splash-wordmark">Galley</div>
+  <div id="splash-line"></div>
+  <div id="splash-tagline">Pantry &middot; Recipe &middot; Less Waste</div>
+</div>
+
+<!-- ── App ── -->
+<div id="app">
+  <header>
+    <div class="logo-lockup">
+      <svg width="28" height="28" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg" style="flex-shrink:0;opacity:0.85">
+        <circle cx="32" cy="18" r="4" stroke="#c8b560" stroke-width="2.5"/>
+        <line x1="32" y1="22" x2="32" y2="52" stroke="#c8b560" stroke-width="2.5"/>
+        <line x1="16" y1="34" x2="48" y2="34" stroke="#c8b560" stroke-width="2.5"/>
+        <path d="M22 52 Q32 46 42 52" stroke="#c8b560" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+        <circle cx="16" cy="34" r="2.5" fill="#c8b560"/>
+        <circle cx="48" cy="34" r="2.5" fill="#c8b560"/>
+        <circle cx="32" cy="52" r="2.5" fill="#c8b560"/>
+      </svg>
+      <div>
+        <div class="logo-wordmark">Galley</div>
+        <div class="logo-sub">Pantry Manager</div>
+      </div>
+    </div>
+    <div class="header-right">
+      <span id="item-count"></span>
+      <button class="btn btn-ghost btn-sm" onclick="openSettings()">Settings</button>
+    </div>
+  </header>
+
+  <div class="tabs">
+    <button class="tab-btn active" id="tab-pantry" onclick="switchTab('pantry')">Pantry</button>
+    <button class="tab-btn" id="tab-recipe" onclick="switchTab('recipe')">Recipe <span class="tab-badge" id="sel-badge" style="display:none"></span></button>
+  </div>
+
+  <div id="pane-pantry"><div id="pantry-content"></div></div>
+  <div id="pane-recipe" style="display:none"><div id="recipe-content"></div></div>
+</div>
+
+<div id="modal-container"></div>
+<input type="file" id="photo-input" accept="image/*" capture="environment" style="display:none" onchange="handlePhotoCapture(this)" />
+
+<script>
+// ─────────────────────────────────────────
+// Constants & State
+// ─────────────────────────────────────────
+const STORAGE_INGREDIENTS = 'galley_ingredients_v1';
+const STORAGE_APIKEY      = 'galley_apikey_v1';
+const UNITS      = ['g','kg','ml','L','tsp','tbsp','cup','oz','lb','count'];
+const CATEGORIES = ['Produce','Dairy','Meat & Fish','Pantry','Frozen','Condiments','Spices','Other'];
+
+let state = {
+  ingredients:    JSON.parse(localStorage.getItem(STORAGE_INGREDIENTS) || '[]'),
+  selected:       new Set(),
+  tab:            'pantry',
+  search:         '',
+  filterCat:      'All',
+  apiKey:         localStorage.getItem(STORAGE_APIKEY) || '',
+  recipe:         null,
+  recipeLoading:  false,
+  recipeError:    null,
+  consumed:       [],
+  filters:        { cuisine:'', time:'', difficulty:'' },
+};
+
+function save() { localStorage.setItem(STORAGE_INGREDIENTS, JSON.stringify(state.ingredients)); }
+
+// ─────────────────────────────────────────
+// Utilities
+// ─────────────────────────────────────────
+function daysUntil(dateStr) {
+  if (!dateStr) return null;
+  return Math.ceil((new Date(dateStr) - new Date()) / 86400000);
+}
+function expiryBadge(days) {
+  if (days === null) return null;
+  if (days < 0)  return { text:'Expired', cls:'expiry-expired', urgent:true,  warn:false };
+  if (days === 0)return { text:'Today',   cls:'expiry-urgent',  urgent:true,  warn:false };
+  if (days <= 2) return { text:days+'d',  cls:'expiry-urgent',  urgent:true,  warn:false };
+  if (days <= 5) return { text:days+'d',  cls:'expiry-soon',    urgent:false, warn:true  };
+  return               { text:days+'d',  cls:'expiry-fine',    urgent:false, warn:false };
+}
+function urgentCount() {
+  return state.ingredients.filter(i => { const d=daysUntil(i.bestBefore); return d!==null && d<=3; }).length;
+}
+function sortedByExpiry(list) {
+  return [...list].sort((a,b) => (daysUntil(a.bestBefore)??9999) - (daysUntil(b.bestBefore)??9999));
+}
+function filteredIngredients() {
+  return sortedByExpiry(state.ingredients.filter(i => {
+    return i.name.toLowerCase().includes(state.search.toLowerCase())
+      && (state.filterCat === 'All' || i.category === state.filterCat);
+  }));
+}
+function escHtml(s) {
+  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+function closeModal(id) { const el=document.getElementById(id); if(el) el.remove(); }
+
+async function callClaude(messages, maxTokens=800) {
+  if (!state.apiKey) throw new Error('No API key set. Add your Anthropic key in Settings.');
+  const res = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-api-key': state.apiKey,
+      'anthropic-version': '2023-06-01',
+      'anthropic-dangerous-client-side-api-key-usage': 'true',
+    },
+    body: JSON.stringify({ model:'claude-sonnet-4-20250514', max_tokens:maxTokens, messages }),
+  });
+  if (!res.ok) { const e=await res.json(); throw new Error(e?.error?.message || `HTTP ${res.status}`); }
+  const data = await res.json();
+  return data.content?.find(b=>b.type==='text')?.text || '';
+}
+
+function parseJSON(text) {
+  return JSON.parse(text.replace(/```json|```/g,'').trim());
+}
+
+// ─────────────────────────────────────────
+// Render — Pantry
+// ─────────────────────────────────────────
+function renderPantry() {
+  const el    = document.getElementById('pantry-content');
+  const items = filteredIngredients();
+  const uc    = urgentCount();
+  let html = '';
+
+  if (uc > 0)
+    html += `<div class="notice notice-warn">${uc} ingredient${uc>1?'s':''} expiring within 3 days — prioritised when generating recipes.</div>`;
+
+  if (!state.apiKey)
+    html += `<div class="notice notice-info">No API key set. Add your Anthropic key in Settings to use recipe generation, photo scan, and bulk add.</div>`;
+
+  if (state.ingredients.length > 0) {
+    html += `
+      <div class="filter-bar">
+        <input type="text" placeholder="Search..." value="${escHtml(state.search)}" oninput="setSearch(this.value)" />
+        <select onchange="setFilterCat(this.value)">
+          <option value="All"${state.filterCat==='All'?' selected':''}>All categories</option>
+          ${CATEGORIES.map(c=>`<option value="${c}"${state.filterCat===c?' selected':''}>${escHtml(c)}</option>`).join('')}
+        </select>
+      </div>`;
+  }
+
+  // Toolbar
+  html += `<div class="add-toolbar">
+    <button class="btn btn-primary btn-sm" onclick="openAddModal()">+ Add</button>
+    <button class="btn btn-ghost btn-sm" onclick="document.getElementById('photo-input').click()">Scan Photo</button>
+    <button class="btn btn-ghost btn-sm" onclick="openBulkModal()">Bulk Add</button>
+  </div>`;
+
+  if (state.selected.size > 0) {
+    html += `
+      <div class="sel-banner">
+        <span>${state.selected.size} selected for recipe</span>
+        <div class="sel-banner-actions">
+          <button class="btn btn-secondary btn-sm" onclick="clearSelection()">Clear</button>
+          <button class="btn btn-primary btn-sm" onclick="switchTab('recipe')">Generate Recipe</button>
+        </div>
+      </div>`;
+  }
+
+  if (state.ingredients.length === 0) {
+    html += `
+      <div class="empty">
+        <div class="empty-title">Your galley is empty</div>
+        <div style="margin-bottom:20px;font-size:13px;line-height:1.6">Add ingredients manually, scan a photo,<br>or bulk add from a list.</div>
+        <button class="btn btn-primary" onclick="openAddModal()">+ Add First Ingredient</button>
+      </div>`;
+  } else if (items.length === 0) {
+    html += `<div style="text-align:center;padding:40px;color:var(--muted);font-size:13px;">No ingredients match</div>`;
+  } else {
+    html += '<div class="ingredient-list">';
+    items.forEach(item => {
+      const exp = expiryBadge(daysUntil(item.bestBefore));
+      const sel = state.selected.has(item.id);
+      const rowCls = ['ingredient-row', sel?'selected':'', exp?.urgent?'urgent':exp?.warn?'warning':''].filter(Boolean).join(' ');
+      html += `
+        <div class="${rowCls}" onclick="toggleSelect(${item.id})">
+          <div class="checkbox"></div>
+          <div style="flex:1;min-width:0">
+            <div class="ing-name">${escHtml(item.name)}</div>
+            <div class="ing-meta">${escHtml(item.category)}${item.qty?' · '+escHtml(item.qty)+' '+escHtml(item.unit):''}</div>
+          </div>
+          ${exp?`<div class="expiry-badge ${exp.cls}">${exp.text}</div>`:''}
+          <div class="row-actions" onclick="event.stopPropagation()">
+            <button class="btn btn-ghost btn-sm" onclick="openEditModal(${item.id})">Edit</button>
+            <button class="btn btn-danger btn-sm" onclick="deleteIngredient(${item.id})">Remove</button>
+          </div>
+        </div>`;
+    });
+    html += '</div>';
+  }
+
+  el.innerHTML = html;
+  updateHeaderCount();
+}
+
+// ─────────────────────────────────────────
+// Render — Recipe
+// ─────────────────────────────────────────
+function renderRecipe() {
+  const el = document.getElementById('recipe-content');
+  const selected     = state.ingredients.filter(i => state.selected.has(i.id));
+  const workingList  = selected.length > 0 ? selected : sortedByExpiry(state.ingredients);
+  let html = '';
+
+  html += `
+    <div class="recipe-filters">
+      <label>Preferences (optional)</label>
+      <div class="grid-3">
+        <select onchange="setFilter('cuisine',this.value)">
+          <option value="">Cuisine</option>
+          ${['Italian','Asian','Mexican','Mediterranean','American','Indian','French','Middle Eastern'].map(c=>`<option value="${c}"${state.filters.cuisine===c?' selected':''}>${c}</option>`).join('')}
+        </select>
+        <select onchange="setFilter('time',this.value)">
+          <option value="">Max time</option>
+          ${['15 min','30 min','45 min','1 hour','2 hours'].map(t=>`<option value="${t}"${state.filters.time===t?' selected':''}>${t}</option>`).join('')}
+        </select>
+        <select onchange="setFilter('difficulty',this.value)">
+          <option value="">Difficulty</option>
+          ${['Easy','Medium','Hard'].map(d=>`<option value="${d}"${state.filters.difficulty===d?' selected':''}>${d}</option>`).join('')}
+        </select>
+      </div>
+    </div>
+    <div class="using-note">
+      ${selected.length>0
+        ? `Using ${selected.length} selected ingredient${selected.length>1?'s':''}`
+        : `Using all ${workingList.length} pantry items — soonest expiry prioritised`}
+    </div>
+    <button class="btn btn-primary btn-full" onclick="generateRecipe()" ${state.recipeLoading||workingList.length===0?'disabled':''}>
+      ${state.recipeLoading ? '<span class="spinner"></span>Generating...' : 'Generate Recipe'}
+    </button>`;
+
+  if (state.recipeError)
+    html += `<div class="notice notice-error" style="margin-top:14px">${escHtml(state.recipeError)}</div>`;
+
+  if (state.recipe) {
+    const r = state.recipe;
+    html += `<div class="recipe-card">
+      <div class="recipe-header">
+        <div class="recipe-title">${escHtml(r.title)}</div>
+        <div class="recipe-stats">
+          <span>${escHtml(r.time||'')}</span>
+          <span>${escHtml(r.difficulty||'')}</span>
+          <span>Serves ${escHtml(String(r.serves||''))}</span>
+        </div>
+        ${r.intro?`<div class="recipe-intro">${escHtml(r.intro)}</div>`:''}
+      </div>`;
+
+    if (r.ingredients_used?.length) {
+      html += `<div class="recipe-section"><div class="section-label">Ingredients</div>`;
+      r.ingredients_used.forEach(ing => {
+        const used = state.consumed.includes(ing.name);
+        html += `<div class="ing-line${used?' consumed':''}"><span>${escHtml(ing.name)}</span><span class="amount">${escHtml(ing.amount||'')} ${escHtml(ing.unit||'')}</span></div>`;
+      });
+      html += `</div>`;
+    }
+    if (r.steps?.length) {
+      html += `<div class="recipe-section"><div class="section-label">Method</div>`;
+      r.steps.forEach((s,i) => {
+        html += `<div class="step-row"><span class="step-num">${String(i+1).padStart(2,'0')}</span><span>${escHtml(s)}</span></div>`;
+      });
+      html += `</div>`;
+    }
+    if (r.notes)
+      html += `<div class="recipe-section"><div class="recipe-notes">${escHtml(r.notes)}</div></div>`;
+
+    html += `<div class="consume-section">`;
+    if (state.consumed.length === 0)
+      html += `<button class="btn btn-secondary btn-full" onclick="consumeIngredients()" style="color:var(--good);border-color:#6a9e7244">Mark Ingredients as Used</button>`;
+    else
+      html += `<div class="consumed-confirm">Pantry updated</div>`;
+    html += `</div></div>`;
+  }
+
+  el.innerHTML = html;
+}
+
+// ─────────────────────────────────────────
+// Recipe Generation
+// ─────────────────────────────────────────
+async function generateRecipe() {
+  const selected    = state.ingredients.filter(i => state.selected.has(i.id));
+  const workingList = selected.length > 0 ? selected : sortedByExpiry(state.ingredients);
+  if (!workingList.length) return;
+
+  state.recipeLoading = true; state.recipe = null; state.recipeError = null; state.consumed = [];
+  renderRecipe();
+
+  const lines = workingList.map(i =>
+    `- ${i.name}${i.qty?` (${i.qty} ${i.unit})`:''} ${i.bestBefore?`[best before: ${i.bestBefore}]`:''}`
+  ).join('\n');
+  const filterText = [
+    state.filters.cuisine   && `Cuisine: ${state.filters.cuisine}`,
+    state.filters.time      && `Max time: ${state.filters.time}`,
+    state.filters.difficulty && `Difficulty: ${state.filters.difficulty}`,
+  ].filter(Boolean).join(', ');
+
+  const prompt = `You are a practical home cook assistant. Available ingredients:\n\n${lines}\n\n${filterText?`Preferences: ${filterText}\n`:''}Prioritise ingredients expiring soonest.\n\nReturn ONE recipe as a JSON object only — no markdown, no preamble:\n{\n  "title": "",\n  "time": "",\n  "difficulty": "Easy|Medium|Hard",\n  "serves": 2,\n  "intro": "",\n  "ingredients_used": [{"name":"","amount":"","unit":""}],\n  "steps": [],\n  "notes": ""\n}`;
+
+  try {
+    const text = await callClaude([{role:'user', content:prompt}], 1000);
+    state.recipe = parseJSON(text);
+    state.recipeError = null;
+  } catch(e) {
+    state.recipeError = 'Failed to generate recipe: ' + e.message;
+  } finally {
+    state.recipeLoading = false;
+    renderRecipe();
+  }
+}
+
+function consumeIngredients() {
+  if (!state.recipe?.ingredients_used) return;
+  state.consumed = state.recipe.ingredients_used.map(i => i.name);
+  state.ingredients = state.ingredients.map(item => {
+    const match = state.recipe.ingredients_used.find(u => u.name.toLowerCase() === item.name.toLowerCase());
+    if (!match || !item.qty) return item;
+    const newQty = Math.max(0, parseFloat(item.qty) - (parseFloat(match.amount)||0));
+    return { ...item, qty: newQty > 0 ? String(newQty) : '' };
+  });
+  save(); renderRecipe();
+}
+
+// ─────────────────────────────────────────
+// Photo Scan
+// ─────────────────────────────────────────
+function handlePhotoCapture(input) {
+  const file = input.files[0];
+  if (!file) return;
+  input.value = '';
+
+  const reader = new FileReader();
+  reader.onload = e => openPhotoModal(file, e.target.result);
+  reader.readAsDataURL(file);
+}
+
+function openPhotoModal(file, dataUrl) {
+  const base64 = dataUrl.split(',')[1];
+  const mediaType = file.type || 'image/jpeg';
+
+  const modal = document.createElement('div');
+  modal.className = 'modal-overlay'; modal.id = 'modal-photo';
+  modal.innerHTML = `
+    <div class="modal">
+      <div class="modal-title">Scan Ingredient</div>
+      <img src="${dataUrl}" class="photo-preview" />
+      <div class="photo-scanning" id="scan-status"><span class="spinner"></span> Identifying ingredient...</div>
+      <div id="scan-form" style="display:none"></div>
+      <div class="modal-actions" id="scan-actions" style="display:none">
+        <button class="btn btn-secondary" onclick="closeModal('modal-photo')">Cancel</button>
+        <button class="btn btn-primary" onclick="saveScanResult()">Add to Pantry</button>
+      </div>
+    </div>`;
+  modal.addEventListener('click', e => { if(e.target===modal) closeModal('modal-photo'); });
+  document.getElementById('modal-container').appendChild(modal);
+
+  scanImage(base64, mediaType);
+}
+
+async function scanImage(base64, mediaType) {
+  const prompt = `Identify the ingredient in this image. Return JSON only — no markdown:\n{"name":"","category":"${CATEGORIES.join('|')}","notes":"any visible brand, variety or useful detail"}`;
+  try {
+    const text = await callClaude([{
+      role:'user',
+      content:[
+        {type:'image', source:{type:'base64', media_type:mediaType, data:base64}},
+        {type:'text',  text:prompt}
+      ]
+    }], 300);
+    const result = parseJSON(text);
+    populateScanForm(result);
+  } catch(e) {
+    const el = document.getElementById('scan-status');
+    if (el) el.innerHTML = `<span style="color:var(--danger)">Scan failed: ${escHtml(e.message)}</span>`;
+    // Still show blank form so user can type manually
+    populateScanForm({name:'', category:'Other', notes:''});
+  }
+}
+
+function populateScanForm(result) {
+  const statusEl = document.getElementById('scan-status');
+  const formEl   = document.getElementById('scan-form');
+  const actionsEl = document.getElementById('scan-actions');
+  if (!formEl) return;
+
+  if (statusEl) statusEl.style.display = 'none';
+
+  const cat = CATEGORIES.includes(result.category) ? result.category : 'Other';
+  formEl.innerHTML = `
+    <div class="field"><label>Name *</label><input id="sc-name" type="text" value="${escHtml(result.name)}" placeholder="Ingredient name" /></div>
+    <div class="grid-2">
+      <div class="field"><label>Quantity</label><input id="sc-qty" type="number" min="0" step="any" placeholder="optional" /></div>
+      <div class="field"><label>Unit</label><select id="sc-unit">${UNITS.map(u=>`<option>${u}</option>`).join('')}</select></div>
+    </div>
+    <div class="field"><label>Category</label><select id="sc-cat">${CATEGORIES.map(c=>`<option value="${c}"${c===cat?' selected':''}>${c}</option>`).join('')}</select></div>
+    <div class="field"><label>Best Before</label><input id="sc-bb" type="date" /></div>
+    ${result.notes?`<div style="font-size:11px;color:var(--muted);margin-top:-6px;margin-bottom:12px">${escHtml(result.notes)}</div>`:''}`;
+
+  formEl.style.display = 'block';
+  if (actionsEl) actionsEl.style.display = 'flex';
+}
+
+function saveScanResult() {
+  const name = document.getElementById('sc-name')?.value.trim();
+  if (!name) return;
+  state.ingredients.push({
+    id: Date.now(), name,
+    qty:        document.getElementById('sc-qty')?.value || '',
+    unit:       document.getElementById('sc-unit')?.value || 'count',
+    category:   document.getElementById('sc-cat')?.value || 'Other',
+    bestBefore: document.getElementById('sc-bb')?.value || '',
+  });
+  save(); closeModal('modal-photo'); renderPantry();
+}
+
+// ─────────────────────────────────────────
+// Bulk Add
+// ─────────────────────────────────────────
+function openBulkModal() {
+  const modal = document.createElement('div');
+  modal.className = 'modal-overlay'; modal.id = 'modal-bulk';
+  modal.innerHTML = `
+    <div class="modal">
+      <div class="modal-title">Bulk Add</div>
+      <div class="field">
+        <label>Ingredients list</label>
+        <textarea id="bulk-input" placeholder="milk&#10;eggs&#10;cheddar cheese&#10;chicken thighs&#10;garlic"></textarea>
+        <div class="bulk-hint">One per line, or comma-separated. Claude will parse names and assign categories.</div>
+      </div>
+      <div id="bulk-status"></div>
+      <div id="bulk-results"></div>
+      <div class="modal-actions">
+        <button class="btn btn-secondary" onclick="closeModal('modal-bulk')">Cancel</button>
+        <button class="btn btn-ghost" id="bulk-parse-btn" onclick="parseBulk()">Parse</button>
+        <button class="btn btn-primary" id="bulk-add-btn" style="display:none" onclick="confirmBulkAdd()">Add All</button>
+      </div>
+    </div>`;
+  modal.addEventListener('click', e => { if(e.target===modal) closeModal('modal-bulk'); });
+  document.getElementById('modal-container').appendChild(modal);
+  document.getElementById('bulk-input').focus();
+}
+
+let bulkParsed = [];
+
+async function parseBulk() {
+  const raw = document.getElementById('bulk-input')?.value.trim();
+  if (!raw) return;
+
+  const statusEl  = document.getElementById('bulk-status');
+  const resultsEl = document.getElementById('bulk-results');
+  const parseBtn  = document.getElementById('bulk-parse-btn');
+  const addBtn    = document.getElementById('bulk-add-btn');
+
+  statusEl.innerHTML = `<div class="notice notice-info"><span class="spinner"></span>Parsing...</div>`;
+  resultsEl.innerHTML = '';
+  if (parseBtn) parseBtn.disabled = true;
+  if (addBtn)   addBtn.style.display = 'none';
+
+  const prompt = `Parse this ingredient list and return a JSON array only — no markdown:\n${raw}\n\nArray of: {"name":"","category":"${CATEGORIES.join('|')}"}\nCategories must be exactly one of those options. Be practical and accurate.`;
+
+  try {
+    const text = await callClaude([{role:'user', content:prompt}], 600);
+    bulkParsed = parseJSON(text);
+    if (!Array.isArray(bulkParsed)) throw new Error('Unexpected response format');
+
+    statusEl.innerHTML = `<div class="notice notice-info">${bulkParsed.length} ingredient${bulkParsed.length!==1?'s':''} identified — review below</div>`;
+    resultsEl.innerHTML = `<div class="bulk-results">${bulkParsed.map((item,i) => `
+      <div class="bulk-result-item">
+        <div style="flex:1">
+          <div class="bri-name">${escHtml(item.name)}</div>
+          <div class="bri-meta">${escHtml(item.category)}</div>
+        </div>
+        <button class="btn btn-danger btn-sm" onclick="removeBulkItem(${i})">Remove</button>
+      </div>`).join('')}</div>`;
+
+    if (addBtn) addBtn.style.display = '';
+  } catch(e) {
+    statusEl.innerHTML = `<div class="notice notice-error">Parse failed: ${escHtml(e.message)}</div>`;
+  } finally {
+    if (parseBtn) parseBtn.disabled = false;
+  }
+}
+
+function removeBulkItem(i) {
+  bulkParsed.splice(i, 1);
+  // Re-render results list
+  const resultsEl = document.getElementById('bulk-results');
+  if (!resultsEl) return;
+  resultsEl.innerHTML = bulkParsed.length ? `<div class="bulk-results">${bulkParsed.map((item,idx) => `
+    <div class="bulk-result-item">
+      <div style="flex:1">
+        <div class="bri-name">${escHtml(item.name)}</div>
+        <div class="bri-meta">${escHtml(item.category)}</div>
+      </div>
+      <button class="btn btn-danger btn-sm" onclick="removeBulkItem(${idx})">Remove</button>
+    </div>`).join('')}</div>` : '<div style="font-size:12px;color:var(--muted);padding:8px 0">No items remaining</div>';
+  const addBtn = document.getElementById('bulk-add-btn');
+  if (addBtn) addBtn.style.display = bulkParsed.length ? '' : 'none';
+  const statusEl = document.getElementById('bulk-status');
+  if (statusEl) statusEl.innerHTML = `<div class="notice notice-info">${bulkParsed.length} ingredient${bulkParsed.length!==1?'s':''} remaining</div>`;
+}
+
+function confirmBulkAdd() {
+  if (!bulkParsed.length) return;
+  bulkParsed.forEach(item => {
+    state.ingredients.push({
+      id: Date.now() + Math.random(),
+      name:       item.name,
+      qty:        '',
+      unit:       'count',
+      category:   CATEGORIES.includes(item.category) ? item.category : 'Other',
+      bestBefore: '',
+    });
+  });
+  save(); closeModal('modal-bulk'); renderPantry();
+}
+
+// ─────────────────────────────────────────
+// Ingredient CRUD
+// ─────────────────────────────────────────
+function openAddModal()    { renderIngredientModal(null); }
+function openEditModal(id) { renderIngredientModal(state.ingredients.find(i=>i.id===id)); }
+
+function renderIngredientModal(item) {
+  const isEdit = !!item;
+  const f = item || { name:'', qty:'', unit:'count', category:'Other', bestBefore:'' };
+  const modal = document.createElement('div');
+  modal.className = 'modal-overlay'; modal.id = 'modal-ingredient';
+  modal.innerHTML = `
+    <div class="modal">
+      <div class="modal-title">${isEdit?'Edit Ingredient':'Add Ingredient'}</div>
+      <div class="field"><label>Name *</label><input id="f-name" type="text" value="${escHtml(f.name)}" placeholder="e.g. Chicken breast" /></div>
+      <div class="grid-2">
+        <div class="field"><label>Quantity</label><input id="f-qty" type="number" min="0" step="any" value="${escHtml(f.qty)}" placeholder="optional" /></div>
+        <div class="field"><label>Unit</label><select id="f-unit">${UNITS.map(u=>`<option value="${u}"${f.unit===u?' selected':''}>${u}</option>`).join('')}</select></div>
+      </div>
+      <div class="field"><label>Category</label><select id="f-cat">${CATEGORIES.map(c=>`<option value="${c}"${f.category===c?' selected':''}>${escHtml(c)}</option>`).join('')}</select></div>
+      <div class="field"><label>Best Before</label><input id="f-bb" type="date" value="${escHtml(f.bestBefore)}" /></div>
+      <div class="modal-actions">
+        <button class="btn btn-secondary" onclick="closeModal('modal-ingredient')">Cancel</button>
+        <button class="btn btn-primary" onclick="saveIngredient(${isEdit?item.id:'null'})">${isEdit?'Save Changes':'Add Ingredient'}</button>
+      </div>
+    </div>`;
+  modal.addEventListener('click', e => { if(e.target===modal) closeModal('modal-ingredient'); });
+  document.getElementById('modal-container').appendChild(modal);
+  setTimeout(() => document.getElementById('f-name')?.focus(), 50);
+}
+
+function saveIngredient(id) {
+  const name = document.getElementById('f-name')?.value.trim();
+  if (!name) return;
+  const entry = {
+    id:         id || Date.now(),
+    name,
+    qty:        document.getElementById('f-qty')?.value || '',
+    unit:       document.getElementById('f-unit')?.value || 'count',
+    category:   document.getElementById('f-cat')?.value || 'Other',
+    bestBefore: document.getElementById('f-bb')?.value || '',
+  };
+  if (id) state.ingredients = state.ingredients.map(i => i.id===id ? entry : i);
+  else    state.ingredients.push(entry);
+  save(); closeModal('modal-ingredient'); renderPantry();
+}
+
+function deleteIngredient(id) {
+  state.ingredients = state.ingredients.filter(i => i.id !== id);
+  state.selected.delete(id);
+  save(); renderPantry(); updateBadge();
+}
+
+// ─────────────────────────────────────────
+// Settings
+// ─────────────────────────────────────────
+function openSettings() {
+  const masked = state.apiKey ? state.apiKey.slice(0,10)+'···'+state.apiKey.slice(-4) : '';
+  const modal = document.createElement('div');
+  modal.className = 'modal-overlay'; modal.id = 'modal-settings';
+  modal.innerHTML = `
+    <div class="modal">
+      <div class="modal-title">Settings</div>
+      <div class="settings-section">
+        <div class="settings-title">Anthropic API Key</div>
+        <p style="font-size:12px;color:var(--muted);margin-bottom:12px;line-height:1.6">Stored in your browser only — sent directly to Anthropic's API, nowhere else. Required for recipe generation, photo scan, and bulk add. Get a key at <a href="https://console.anthropic.com" target="_blank" style="color:var(--accent)">console.anthropic.com</a>.</p>
+        ${masked?`<div class="key-display">Current: ${escHtml(masked)}</div>`:''}
+        <div class="field"><label>${masked?'Replace Key':'API Key'}</label><input id="f-apikey" type="password" placeholder="sk-ant-..." /></div>
+        <div style="display:flex;gap:8px;justify-content:flex-end">
+          ${state.apiKey?`<button class="btn btn-danger btn-sm" onclick="clearApiKey()">Remove Key</button>`:''}
+          <button class="btn btn-primary btn-sm" onclick="saveApiKey()">Save Key</button>
+        </div>
+      </div>
+      <div class="settings-section">
+        <div class="settings-title">Data</div>
+        <p style="font-size:12px;color:var(--muted);margin-bottom:12px">All pantry data is stored in your browser's local storage.</p>
+        <button class="btn btn-danger btn-sm" onclick="confirmClearAll()">Clear All Ingredients</button>
+      </div>
+      <div class="modal-actions"><button class="btn btn-secondary" onclick="closeModal('modal-settings')">Close</button></div>
+    </div>`;
+  modal.addEventListener('click', e => { if(e.target===modal) closeModal('modal-settings'); });
+  document.getElementById('modal-container').appendChild(modal);
+}
+
+function saveApiKey() {
+  const val = document.getElementById('f-apikey')?.value.trim();
+  if (!val) return;
+  state.apiKey = val; localStorage.setItem(STORAGE_APIKEY, val);
+  closeModal('modal-settings'); renderPantry();
+}
+function clearApiKey() {
+  state.apiKey = ''; localStorage.removeItem(STORAGE_APIKEY);
+  closeModal('modal-settings'); renderPantry();
+}
+function confirmClearAll() {
+  if (confirm('Remove all ingredients? This cannot be undone.')) {
+    state.ingredients = []; state.selected = new Set();
+    save(); closeModal('modal-settings'); renderPantry(); updateBadge();
+  }
+}
+
+// ─────────────────────────────────────────
+// Tab / UI helpers
+// ─────────────────────────────────────────
+function switchTab(tab) {
+  state.tab = tab;
+  document.getElementById('pane-pantry').style.display = tab==='pantry' ? '' : 'none';
+  document.getElementById('pane-recipe').style.display = tab==='recipe' ? '' : 'none';
+  document.getElementById('tab-pantry').classList.toggle('active', tab==='pantry');
+  document.getElementById('tab-recipe').classList.toggle('active', tab==='recipe');
+  if (tab==='recipe') renderRecipe();
+  if (tab==='pantry') renderPantry();
+}
+function toggleSelect(id) { state.selected.has(id)?state.selected.delete(id):state.selected.add(id); updateBadge(); renderPantry(); }
+function clearSelection()  { state.selected = new Set(); updateBadge(); renderPantry(); }
+function setSearch(val)    { state.search = val; renderPantry(); }
+function setFilterCat(val) { state.filterCat = val; renderPantry(); }
+function setFilter(k,v)    { state.filters[k] = v; }
+function updateBadge() {
+  const b = document.getElementById('sel-badge');
+  if (state.selected.size > 0) { b.style.display=''; b.textContent=state.selected.size; }
+  else b.style.display='none';
+}
+function updateHeaderCount() {
+  const el = document.getElementById('item-count');
+  const n  = state.ingredients.length;
+  el.textContent = n > 0 ? `${n} item${n!==1?'s':''}` : '';
+}
+
+// ─────────────────────────────────────────
+// Init
+// ─────────────────────────────────────────
+renderPantry();
+</script>
+</body>
+</html>
